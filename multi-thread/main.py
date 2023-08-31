@@ -418,7 +418,16 @@ def check_product(link, index, driver, wait, thread_id):
             address_add_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
             address_add_btn.click()
             add_address(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
-        
+        else:
+            try:
+                address_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
+                address_btn.click()
+                address_add_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
+                address_add_btn.click()
+                add_address(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
+            except:
+                print("no address add button")
+
         if((index-sub_index) % 2 == 0):
             #address 1
             try:
