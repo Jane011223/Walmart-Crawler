@@ -540,23 +540,27 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
                 cell = error_sheet.cell(row=num_errors+1, column=1)
                 cell.value = row[0]
 
-        b_value = row[1]
-        if(b_value == None):
-            sheet.cell(row=row_index + i, column=2).value = value
-        else:
-            sheet.cell(row=row_index + i, column=3).value = value
-            if "error" in value or "error" in b_value:
-                d_value = "error"
-            else:
-                if(b_value == value):
-                    d_value = "0"
-                else:
-                    if(b_value == "TRUE"):
-                        d_value = "out"
-                    else:
-                        d_value = "in"
+        try:
+            b_value = row[1]
 
-            sheet.cell(row=row_index + i, column=4).value = d_value
+            if(b_value == None):
+                sheet.cell(row=row_index + i, column=2).value = value
+            else:
+                sheet.cell(row=row_index + i, column=3).value = value
+                if "error" in value or "error" in b_value:
+                    d_value = "error"
+                else:
+                    if(b_value == value):
+                        d_value = "0"
+                    else:
+                        if(b_value == "TRUE"):
+                            d_value = "out"
+                        else:
+                            d_value = "in"
+
+                sheet.cell(row=row_index + i, column=4).value = d_value
+        except:
+            sheet.cell(row=row_index + i, column=2).value = value
     
     driver.quit()
     
