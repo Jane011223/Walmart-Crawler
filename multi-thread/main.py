@@ -341,15 +341,14 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
     retry -= 1
     solve_blocked(driver, retry, link, index, wait, thread_id)
 
-def check_product(link, index, driver, wait, thread_id):
+def check_product(link, index, driver, wait, thread_id, sub_index):
     global address1_value, address2_value, address3_value
     global city1_value, city2_value, city3_value
     global state1_value, state2_value, state3_value
     global telephone1_value, telephone2_value, telephone3_value
     global zipCode1_value, zipCode2_value, zipCode3_value
     global captcha_status
-    sub_index = 0
-
+    
     try:
         try:
             driver.get(link)
@@ -362,35 +361,9 @@ def check_product(link, index, driver, wait, thread_id):
             return "404 error"
         
         solve_blocked(driver, 5, link, index, wait, thread_id)
+        if(captcha_status == "false"):
+            return "captcha false"
         
-        while(captcha_status == "false"):
-            options = ChromeOptions()
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--disable-infobars")
-            options.add_argument("--disable-notifications")
-            options.add_argument("--disable-web-security")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-software-rasterizer")
-            options.add_argument("--disable-features=VizDisplayCompositor")
-            options.add_argument("--blink-settings=imagesEnabled=false")
-            options.add_argument("--blink-settings=videoEnabled=false")
-            options.add_argument("--disable-css-rendering")
-            # or alternatively we can set direct preference:
-            prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
-            options.add_experimental_option('prefs', prefs)
-            
-            # driver = Chrome(options=options,
-            #             executable_path=ChromeDriverManager().install())
-            driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
-            wait = WebDriverWait(driver, 30)
-            driver.get(link)
-            sub_index = index
-            solve_blocked(driver, 5, link, index, wait)
-            if(captcha_status == "true"):
-                break
-
         flag = 0
         
         if thread_id == 0:
@@ -409,7 +382,8 @@ def check_product(link, index, driver, wait, thread_id):
             # Clear the current value
             productURL4_entry.delete(0, "end")
             productURL4_entry.insert(0, link)
-        print(link)
+
+        print(str(thread_id) + str(index))
         
         #add address
         if(index-sub_index == 0):
@@ -418,15 +392,6 @@ def check_product(link, index, driver, wait, thread_id):
             address_add_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
             address_add_btn.click()
             add_address(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
-        else:
-            try:
-                address_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
-                address_btn.click()
-                address_add_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
-                address_add_btn.click()
-                add_address(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
-            except:
-                print("no address add button")
 
         if((index-sub_index) % 2 == 0):
             #address 1
@@ -443,7 +408,13 @@ def check_product(link, index, driver, wait, thread_id):
                 try:
                     address_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
                     address_btn.click()
-                    editAddress(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
+                    try:
+                        address_add_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
+                        address_add_btn.click()
+                        add_address(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
+                    except:
+                        print("no address add button")
+                        editAddress(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
                     status = check_status(link, driver, wait)
                     if(status == "stopped"):
                         return "stopped"
@@ -456,7 +427,13 @@ def check_product(link, index, driver, wait, thread_id):
                 try:
                     address_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
                     address_btn.click()
-                    editAddress(address3_value, city3_value, state3_value, telephone3_value, zipCode3_value, driver, wait)
+                    try:
+                        address_add_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
+                        address_add_btn.click()
+                        add_address(address3_value, city3_value, state3_value, telephone3_value, zipCode3_value, driver, wait)
+                    except:
+                        print("no address add button")
+                        editAddress(address3_value, city3_value, state3_value, telephone3_value, zipCode3_value, driver, wait)
                     status = check_status(link, driver, wait)
                     if(status == "stopped"):
                         return "stopped"
@@ -478,7 +455,13 @@ def check_product(link, index, driver, wait, thread_id):
                 try:
                     address_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
                     address_btn.click()
-                    editAddress(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
+                    try:
+                        address_add_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
+                        address_add_btn.click()
+                        add_address(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
+                    except:
+                        print("no address add button")
+                        editAddress(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
                     status = check_status(link, driver, wait)
                     if(status == "stopped"):
                         return "stopped"
@@ -491,7 +474,13 @@ def check_product(link, index, driver, wait, thread_id):
                 try:
                     address_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
                     address_btn.click()
-                    editAddress(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
+                    try:
+                        address_add_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
+                        address_add_btn.click()
+                        add_address(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
+                    except:
+                        print("no address add button")
+                        editAddress(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
                     status = check_status(link, driver, wait)
                     if(status == "stopped"):
                         return "stopped"
@@ -514,7 +503,8 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
     wait = WebDriverWait(driver, 30)
 
     row_index = start_row
-    
+    sub_index = 0
+
     for i, row in enumerate(sheet.iter_rows(min_row=row_index, max_row = end_row, values_only=True)):
         # Check if the stop event is set
         if stop_event.is_set():
@@ -539,7 +529,33 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
             productID4_entry.delete(0, "end")
             productID4_entry.insert(0, start_row)
 
-        value = check_product(row[0], i, driver, wait, thread_id)
+        value = check_product(row[0], i, driver, wait, thread_id, sub_index)
+        print(value)
+        while (value == "captcha false"):
+            options = ChromeOptions()
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--disable-infobars")
+            options.add_argument("--disable-notifications")
+            options.add_argument("--disable-web-security")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-software-rasterizer")
+            options.add_argument("--disable-features=VizDisplayCompositor")
+            options.add_argument("--blink-settings=imagesEnabled=false")
+            options.add_argument("--blink-settings=videoEnabled=false")
+            options.add_argument("--disable-css-rendering")
+            # or alternatively we can set direct preference:
+            prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
+            options.add_experimental_option('prefs', prefs)
+            
+            # driver = Chrome(options=options,
+            #             executable_path=ChromeDriverManager().install())
+            driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            wait = WebDriverWait(driver, 30)
+            sub_index = i
+            value = check_product(row[0], i, driver, wait, thread_id, sub_index)
+
         if value == "stopped":
             break
         
