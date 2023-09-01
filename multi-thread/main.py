@@ -100,17 +100,22 @@ def play_audio(filename):
 def add_address(street, city, state, telephone, zipCode, driver, wait):
     change_addressForm(street, city, state, telephone, zipCode, 0, driver, wait)
 
-    useaddress_btn = wait.until(EC.presence_of_element_located(
-        (By.XPATH, useaddress_btn_xpath)))
-    useaddress_btn.click()
-
-    selectaddress_btn = wait.until(EC.presence_of_element_located(
-        (By.XPATH, selectaddress_btn_xpath)))
-    selectaddress_btn.click()
+    try:
+        selectaddress_btn = WebDriverWait(driver, 5).until(EC.element_to_be_clickable(
+            (By.XPATH, selectaddress_btn_xpath)))
+        selectaddress_btn.click()
+    except:
+        useaddress_btn = wait.until(EC.element_to_be_clickable(
+            (By.XPATH, useaddress_btn_xpath)))
+        useaddress_btn.click()
+        selectaddress_btn = wait.until(EC.element_to_be_clickable(
+            (By.XPATH, selectaddress_btn_xpath)))
+        selectaddress_btn.click()
 
     selectsave_btn = driver.find_element(By.XPATH, selectsave_btn_xpath)
     selectsave_btn.click()
     
+    time.sleep(2)
     address_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
     address_btn.click()
 
@@ -341,7 +346,7 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
     retry -= 1
     solve_blocked(driver, retry, link, index, wait, thread_id)
 
-def check_product(link, index, driver, wait, thread_id, sub_index):
+def check_product(link, index, driver, thread_id, sub_index):    
     global address1_value, address2_value, address3_value
     global city1_value, city2_value, city3_value
     global state1_value, state2_value, state3_value
@@ -349,6 +354,8 @@ def check_product(link, index, driver, wait, thread_id, sub_index):
     global zipCode1_value, zipCode2_value, zipCode3_value
     global captcha_status
     
+    wait = WebDriverWait(driver, 30)
+
     try:
         try:
             driver.get(link)
@@ -389,9 +396,12 @@ def check_product(link, index, driver, wait, thread_id, sub_index):
         if(index-sub_index == 0):
             address_btn = WebDriverWait(driver, 150).until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
             address_btn.click()
-            address_add_btn = wait.until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
-            address_add_btn.click()
-            add_address(address1_value, city1_value, state1_value, telephone1_value, zipCode1_value, driver, wait)
+            try:
+                address_add_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
+                address_add_btn.click()
+                add_address(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
+            except:
+                print("no address add button")
 
         if((index-sub_index) % 2 == 0):
             #address 1
@@ -500,8 +510,6 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
     print("running start thread" + str(thread_id))
     global num_errors
 
-    wait = WebDriverWait(driver, 30)
-
     row_index = start_row
     sub_index = 0
 
@@ -529,7 +537,7 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
             productID4_entry.delete(0, "end")
             productID4_entry.insert(0, start_row)
 
-        value = check_product(row[0], i, driver, wait, thread_id, sub_index)
+        value = check_product(row[0], i, driver, thread_id, sub_index)
         print(value)
         while (value == "captcha false"):
             options = ChromeOptions()
@@ -552,9 +560,9 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
             # driver = Chrome(options=options,
             #             executable_path=ChromeDriverManager().install())
             driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
-            wait = WebDriverWait(driver, 30)
+            driver.set_page_load_timeout(30)
             sub_index = i
-            value = check_product(row[0], i, driver, wait, thread_id, sub_index)
+            value = check_product(row[0], i, driver, thread_id, sub_index)
 
         if value == "stopped":
             break
@@ -669,9 +677,11 @@ def main_process(workbook, sheet, directory_path):
             # driver = Chrome(options=options,
             #             executable_path=ChromeDriverManager().install())
             driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            driver.set_page_load_timeout(30)
             t = threading.Thread(target=run_process, args=(start_row, end_row - 1, scan_index, sheet, i, driver, error_sheet))
             threads.append(t)
             t.start()
+            time.sleep(60)
         
         for t in threads:
             t.join()
