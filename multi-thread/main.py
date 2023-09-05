@@ -71,6 +71,7 @@ zipCode3_value = ""
 pixelRatio = 1
 
 num_errors = 0
+array_errors = []
 
 # Create a lock object
 lock = threading.Lock()
@@ -519,6 +520,7 @@ def check_product(link, index, driver, thread_id, sub_index):
 def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_sheet):
     print("running start thread" + str(thread_id))
     global num_errors
+    global array_errors
 
     row_index = start_row
     sub_index = 0
@@ -584,8 +586,7 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
         if "error" in value:
             with lock:
                 num_errors += 1
-                cell = error_sheet.cell(row=num_errors+1, column=1)
-                cell.value = row[0]
+                array_errors.append(row_index + i)
 
         try:
             b_value = row[1]
@@ -630,6 +631,106 @@ def update_timer():
             window.after(1000, update_timer)
         else:
             canvas.itemconfigure(remainingtime_text, text="Time is Up!")
+
+def scan_errors(sheet):
+    global num_errors
+    global array_errors
+
+    errors = []
+    options = ChromeOptions()
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--disable-notifications")
+    options.add_argument("--disable-web-security")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-features=VizDisplayCompositor")
+    options.add_argument("--blink-settings=imagesEnabled=false")
+    options.add_argument("--blink-settings=videoEnabled=false")
+    options.add_argument("--disable-css-rendering")
+    # or alternatively we can set direct preference:
+    prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
+    options.add_experimental_option('prefs', prefs)
+    
+    # driver = Chrome(options=options,
+    #             executable_path=ChromeDriverManager().install())
+    # driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
+    driver.set_page_load_timeout(30)
+
+    sub_index = 0
+    index = 0
+    num_errors = 0
+
+    for error_index in array_errors:
+        print(error_index)
+        link = sheet.cell(row = error_index, column = 1).value
+        value = check_product(link, index, driver, 0, sub_index)
+        while (value == "captcha false"):
+            time.sleep(600)
+            options = ChromeOptions()
+            options.add_argument("--disable-extensions")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--disable-infobars")
+            options.add_argument("--disable-notifications")
+            options.add_argument("--disable-web-security")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-software-rasterizer")
+            options.add_argument("--disable-features=VizDisplayCompositor")
+            options.add_argument("--blink-settings=imagesEnabled=false")
+            options.add_argument("--blink-settings=videoEnabled=false")
+            options.add_argument("--disable-css-rendering")
+            # or alternatively we can set direct preference:
+            prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
+            options.add_experimental_option('prefs', prefs)
+            
+            # driver = Chrome(options=options,
+            #             executable_path=ChromeDriverManager().install())
+            # Get the path where ChromeDriver was downloaded or will be downloaded
+        
+            driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
+
+            driver.set_page_load_timeout(30)
+            sub_index = index
+            value = check_product(link, index, driver, 0, sub_index)
+
+        if value == "stopped":
+            break
+        
+        if "error" in value:
+            with lock:
+                num_errors += 1
+                errors.append(error_index)
+
+        try:
+            b_value = sheet.cell(row = error_index, column = 2).value
+
+            if(b_value == None):
+                sheet.cell(row=error_index, column=2).value = value
+            else:
+                sheet.cell(row=error_index, column=3).value = value
+                if "error" in value or "error" in b_value:
+                    d_value = "error"
+                else:
+                    if(b_value == value):
+                        d_value = "0"
+                    else:
+                        if(b_value == "TRUE"):
+                            d_value = "out"
+                        else:
+                            d_value = "in"
+
+                sheet.cell(row=error_index, column=4).value = d_value
+        except:
+            sheet.cell(row=error_index, column=2).value = value
+
+        index = index +1
+
+    driver.quit()
+    array_errors = errors
 
 def main_process(workbook, sheet, directory_path):
     global wait_time
@@ -702,6 +803,7 @@ def main_process(workbook, sheet, directory_path):
         for t in threads:
             t.join()
 
+        running_cnt = 5
 
         if(stop_event.is_set()):
             # Get the current date and time
@@ -743,8 +845,14 @@ def main_process(workbook, sheet, directory_path):
             #save excel file after scanning all products
             save_filename = directory_path + "/walmart_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
             workbook.save(save_filename)
-            error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
-            error_workbook.save(error_filename)
+            # error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
+            # error_workbook.save(error_filename)
+            canvas.itemconfigure(errorproducts_text, text= num_errors + "errors")
+            
+            while num_errors > 10 and running_cnt >= 0:
+                scan_errors(sheet)
+                running_cnt = running_cnt -1
+                workbook.save(save_filename)
 
             try:
                 # Display a pop-up notification and play audio
@@ -1127,7 +1235,7 @@ canvas.create_text(
 )
 
 scanning_id_text = canvas.create_text(
-    203.0,
+    163.0,
     320.0,
     anchor="nw",
     text="",
@@ -1136,7 +1244,7 @@ scanning_id_text = canvas.create_text(
 )
 
 scanning_status_text = canvas.create_text(
-    323.0,
+    283.0,
     320.0,
     anchor="nw",
     text="",
@@ -1145,7 +1253,16 @@ scanning_status_text = canvas.create_text(
 )
 
 remainingtime_text = canvas.create_text(
-    433.0,
+    393.0,
+    320.0,
+    anchor="nw",
+    text="",
+    fill="#FFFFFF",
+    font=("Roboto Medium", 14 * -1)
+)
+
+errorproducts_text = canvas.create_text(
+    483.0,
     320.0,
     anchor="nw",
     text="",
