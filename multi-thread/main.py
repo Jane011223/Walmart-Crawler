@@ -816,8 +816,16 @@ def main_process(workbook, sheet, directory_path):
             #save excel file after scanning all products
             save_filename = directory_path + "/walmart_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
             workbook.save(save_filename)
-            error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
-            error_workbook.save(error_filename)
+            # error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
+            # error_workbook.save(error_filename)
+
+            canvas.itemconfigure(errorproducts_text, text= str(num_errors) + " errors")
+            
+            while num_errors > 0 and running_cnt >= 0:
+                scan_errors(sheet)
+                running_cnt = running_cnt -1
+                workbook.save(save_filename)
+                
             try:
                 # Display a pop-up notification and play audio
                 pygame.mixer.init()
@@ -847,9 +855,9 @@ def main_process(workbook, sheet, directory_path):
             workbook.save(save_filename)
             # error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
             # error_workbook.save(error_filename)
-            canvas.itemconfigure(errorproducts_text, text= num_errors + "errors")
+            canvas.itemconfigure(errorproducts_text, text= str(num_errors) + " errors")
             
-            while num_errors > 10 and running_cnt >= 0:
+            while num_errors > 0 and running_cnt >= 0:
                 scan_errors(sheet)
                 running_cnt = running_cnt -1
                 workbook.save(save_filename)
