@@ -276,16 +276,17 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
     (Cross-domain iframe cannot get elements temporarily)
     Simulate the mouse press and hold to complete the verification
     '''
-    if not retry:
-        driver.quit()
-        captcha_status = "false"
-        return
     element = None
     try:
         element = WebDriverWait(driver,1).until(EC.element_to_be_clickable((By.ID,'px-captcha')))
     except BaseException as e:
         print(f'px-captcha element not found')
         captcha_status = "true"
+        return
+    
+    if not retry:
+        driver.quit()
+        captcha_status = "false"
         return
     
     print(f'solve blocked:{driver.current_url}, Retry {retry} remaining times')
@@ -690,7 +691,8 @@ def main_process(workbook, sheet, directory_path):
             
             # driver = Chrome(options=options,
             #             executable_path=ChromeDriverManager().install())
-            driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            # driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
             driver.set_page_load_timeout(30)
             t = threading.Thread(target=run_process, args=(start_row+1, end_row, scan_index, sheet, i, driver, error_sheet))
             threads.append(t)
@@ -776,6 +778,11 @@ def main_process(workbook, sheet, directory_path):
     start_btn["state"] = "normal"
 
 def start_processing():
+    # Get the current date and time
+    current_datetime = datetime.now()
+
+    canvas.itemconfigure(start_time_text, text=current_datetime)
+    
     global address1_value, address2_value, address3_value
     global city1_value, city2_value, city3_value
     global state1_value, state2_value, state3_value
@@ -1402,14 +1409,41 @@ productURL4_entry.place(
     height=30.0
 )
 
+canvas.create_text(
+    40.0,
+    580.0,
+    anchor="nw",
+    text="Start Time",
+    fill="#FFFFFF",
+    font=("Roboto Medium", 14 * -1)
+)
+
+canvas.create_text(
+    40.0,
+    580.0,
+    anchor="nw",
+    text="Start Time",
+    fill="#FFFFFF",
+    font=("Roboto Medium", 14 * -1)
+)
+
+start_time_text = canvas.create_text(
+    163.0,
+    580.0,
+    anchor="nw",
+    text="",
+    fill="#FFFFFF",
+    font=("Roboto Medium", 14 * -1)
+)
+
 start_img = PhotoImage(file=relative_to_assets("start.png"))
 start_btn = Button(
     image=start_img, borderwidth=0, highlightthickness=0, relief="flat", command=lambda : handle_btn_press("start"),activebackground= "#202020")
-start_btn.place(x=158, y=600, width=172, height=47)
+start_btn.place(x=158, y=620, width=172, height=47)
 
 stop_img = PhotoImage(file=relative_to_assets("stop.png"))
 stop_btn = Button(image=stop_img, borderwidth=0, highlightthickness=0, relief="flat", command=lambda : handle_btn_press("stop"),activebackground= "#202020", state="disabled")
-stop_btn.place(x=488, y=600, width=172, height=47)
+stop_btn.place(x=488, y=620, width=172, height=47)
 
 address1_entry.insert(0, "1632 Scholar Dr")
 city1_entry.insert(0, "Lawrenceville")
