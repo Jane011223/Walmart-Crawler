@@ -391,7 +391,8 @@ def check_product(link, index, driver, wait, sub_index):
                     return "stopped"
                 flag += status
             except Exception as e:
-                return "An error occurred:"+ str(e)
+                flag += 0
+                print("An error occurred:"+ str(e))
             
             #address2
             if address2_value and city2_value and state2_value and telephone2_value and zipCode2_value:
@@ -404,7 +405,8 @@ def check_product(link, index, driver, wait, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
                 
             #address 3
             if address3_value and city3_value and state3_value and telephone3_value and zipCode3_value:
@@ -417,7 +419,8 @@ def check_product(link, index, driver, wait, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
         else:
             #address 3
             try:
@@ -426,7 +429,8 @@ def check_product(link, index, driver, wait, sub_index):
                     return "stopped"
                 flag += status
             except Exception as e:
-                return "An error occurred:"+ str(e)
+                flag += 0
+                print("An error occurred:"+ str(e))
 
             #address2
             if address2_value and city2_value and state2_value and telephone2_value and zipCode2_value:
@@ -439,7 +443,8 @@ def check_product(link, index, driver, wait, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
             
             #address1
             if address1_value and city1_value and state1_value and telephone1_value and zipCode1_value:
@@ -452,7 +457,8 @@ def check_product(link, index, driver, wait, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
         
         if(flag >= 2):
             return "TRUE"
@@ -600,6 +606,7 @@ def main_process(workbook, sheet, directory_path):
 
     error_workbook = openpyxl.Workbook()
     error_sheet = error_workbook.active
+    error_sheet.title = "Sheet1"
 
     error_sheet['A1'] = "product link"
     error_sheet['B1'] = "could be ordered by walmart's shipping method(first scan)"
@@ -629,10 +636,13 @@ def main_process(workbook, sheet, directory_path):
             error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
             workbook.save(save_filename)
             error_workbook.save(error_filename)
-            # Display a pop-up notification and play audio
-            pygame.mixer.init()
-            pygame.mixer.music.load(relative_to_assets('notification.mp3'))
-            pygame.mixer.music.play()
+            try:
+                # Display a pop-up notification and play audio
+                pygame.mixer.init()
+                pygame.mixer.music.load(relative_to_assets('notification.mp3'))
+                pygame.mixer.music.play()
+            except:
+                print("audio error")
 
             messagebox_text = "Scanning Stopped"
             # Display a pop-up notification
@@ -655,10 +665,13 @@ def main_process(workbook, sheet, directory_path):
             workbook.save(save_filename)
             error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
             error_workbook.save(error_filename)
-            # Display a pop-up notification and play audio
-            pygame.mixer.init()
-            pygame.mixer.music.load(relative_to_assets('notification.mp3'))
-            pygame.mixer.music.play()
+            try:
+                # Display a pop-up notification and play audio
+                pygame.mixer.init()
+                pygame.mixer.music.load(relative_to_assets('notification.mp3'))
+                pygame.mixer.music.play()
+            except:
+                print("audio error")
 
             messagebox_text = scanning_text + " finished" +"\n " + str(num_errors) + " products failed to scan, please to check"
             # Display a pop-up notification

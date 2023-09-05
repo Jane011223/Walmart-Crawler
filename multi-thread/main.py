@@ -229,6 +229,7 @@ def check_status(link, driver, wait):
         return "stopped"
     
     if(check_shipping(driver, wait) == 1):
+        time.sleep(2)
         addcart_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, '[data-testid="add-to-cart-section"]'))).find_element(By.TAG_NAME, 'button')
         addcart_btn.click()
 
@@ -278,7 +279,6 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
     if not retry:
         driver.quit()
         captcha_status = "false"
-        time.sleep(100)
         return
     element = None
     try:
@@ -305,7 +305,7 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
         # ActionChains(driver).click_and_hold(element).perform()
         start_time = time.time()
         while 1:
-            if time.time() - start_time > 20:
+            if time.time() - start_time > 15:
                 break
             left = x * pixelRatio
             top = y * pixelRatio
@@ -314,7 +314,6 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
             png = driver.get_screenshot_as_png() 
             im = Image.open(BytesIO(png))
             im = im.crop((left, top, right, bottom))
-            im.save("1.png")
             target = cv2.cvtColor(np.asarray(im),cv2.COLOR_RGB2BGR)  
             # Initiate SIFT detector
             sift = cv2.SIFT_create()
@@ -330,10 +329,14 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
             matches = flann.knnMatch(des1,des2,k=2)
             # store all the good matches as per Lowe's ratio test.
             good = []
+
             # Discard matches greater than 0.7
-            for m,n in matches:
-                if m.distance < 0.7*n.distance:
-                    good.append(m)
+            for match in matches:
+                if len(match) == 2:
+                    m, n = match
+                    if m.distance < 0.7*n.distance:
+                        good.append(m)
+
             print( "Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
             if len(good)>=MIN_MATCH_COUNT:
                 print(f'release button')
@@ -367,7 +370,7 @@ def check_product(link, index, driver, thread_id, sub_index):
         if status_code == 404:
             return "404 error"
         
-        solve_blocked(driver, 5, link, index, wait, thread_id)
+        solve_blocked(driver, 3, link, index, wait, thread_id)
         if(captcha_status == "false"):
             return "captcha false"
         
@@ -411,7 +414,8 @@ def check_product(link, index, driver, thread_id, sub_index):
                     return "stopped"
                 flag += status
             except Exception as e:
-                return "An error occurred:"+ str(e)
+                flag += 0
+                print("An error occurred:"+ str(e))
             
             #address2
             if address2_value and city2_value and state2_value and telephone2_value and zipCode2_value:
@@ -430,7 +434,8 @@ def check_product(link, index, driver, thread_id, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
                 
             #address 3
             if address3_value and city3_value and state3_value and telephone3_value and zipCode3_value:
@@ -449,7 +454,8 @@ def check_product(link, index, driver, thread_id, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
         else:
             #address 3
             try:
@@ -458,7 +464,8 @@ def check_product(link, index, driver, thread_id, sub_index):
                     return "stopped"
                 flag += status
             except Exception as e:
-                return "An error occurred:"+ str(e)
+                flag += 0
+                print("An error occurred:"+ str(e))
 
             #address2
             if address2_value and city2_value and state2_value and telephone2_value and zipCode2_value:
@@ -477,7 +484,8 @@ def check_product(link, index, driver, thread_id, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
             
             #address1
             if address1_value and city1_value and state1_value and telephone1_value and zipCode1_value:
@@ -496,7 +504,8 @@ def check_product(link, index, driver, thread_id, sub_index):
                         return "stopped"
                     flag += status
                 except Exception as e:
-                    return "An error occurred:"+ str(e)
+                    flag += 0
+                    print("An error occurred:"+ str(e))
         
         if(flag >= 2):
             return "TRUE"
@@ -516,7 +525,7 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
     for i, row in enumerate(sheet.iter_rows(min_row=row_index, max_row = end_row, values_only=True)):
         # Check if the stop event is set
         if stop_event.is_set():
-            print("Thread " + thread_id + " stopped.")
+            print("Thread " + str(thread_id) + " stopped.")
             break
         
         start_row = row_index + i
@@ -540,6 +549,7 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
         value = check_product(row[0], i, driver, thread_id, sub_index)
         print(value)
         while (value == "captcha false"):
+            time.sleep(600)
             options = ChromeOptions()
             options.add_argument("--disable-extensions")
             options.add_argument("--disable-gpu")
@@ -559,7 +569,10 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
             
             # driver = Chrome(options=options,
             #             executable_path=ChromeDriverManager().install())
-            driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
+            # Get the path where ChromeDriver was downloaded or will be downloaded
+        
+            driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
+
             driver.set_page_load_timeout(30)
             sub_index = i
             value = check_product(row[0], i, driver, thread_id, sub_index)
@@ -629,6 +642,7 @@ def main_process(workbook, sheet, directory_path):
     
     error_workbook = openpyxl.Workbook()
     error_sheet = error_workbook.active
+    error_sheet.title = "Sheet1"
 
     error_sheet['A1'] = "product link"
     error_sheet['B1'] = "could be ordered by walmart's shipping method(first scan)"
@@ -648,7 +662,7 @@ def main_process(workbook, sheet, directory_path):
             threads_cnt = 1
 
         count = row_count // threads_cnt
-        end_row = 2
+        end_row = 1
 
         for i in range(threads_cnt):
             start_row = end_row
@@ -678,10 +692,10 @@ def main_process(workbook, sheet, directory_path):
             #             executable_path=ChromeDriverManager().install())
             driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
             driver.set_page_load_timeout(30)
-            t = threading.Thread(target=run_process, args=(start_row, end_row - 1, scan_index, sheet, i, driver, error_sheet))
+            t = threading.Thread(target=run_process, args=(start_row+1, end_row, scan_index, sheet, i, driver, error_sheet))
             threads.append(t)
             t.start()
-            time.sleep(60)
+            time.sleep(100)
         
         for t in threads:
             t.join()
@@ -700,10 +714,13 @@ def main_process(workbook, sheet, directory_path):
             workbook.save(save_filename)
             error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
             error_workbook.save(error_filename)
-            # Display a pop-up notification and play audio
-            pygame.mixer.init()
-            pygame.mixer.music.load(relative_to_assets('notification.mp3'))
-            pygame.mixer.music.play()
+            try:
+                # Display a pop-up notification and play audio
+                pygame.mixer.init()
+                pygame.mixer.music.load(relative_to_assets('notification.mp3'))
+                pygame.mixer.music.play()
+            except:
+                print("audio error")
 
             messagebox_text = "Scanning Stopped"
             # Display a pop-up notification
@@ -727,10 +744,13 @@ def main_process(workbook, sheet, directory_path):
             error_filename = directory_path + "/errors_" + str(current_date) + "_" + str(current_hour) + "_" + str(current_minute) + "_" + str(current_second) + ".xlsx"
             error_workbook.save(error_filename)
 
-            # Display a pop-up notification and play audio
-            pygame.mixer.init()
-            pygame.mixer.music.load(relative_to_assets('notification.mp3'))
-            pygame.mixer.music.play()
+            try:
+                # Display a pop-up notification and play audio
+                pygame.mixer.init()
+                pygame.mixer.music.load(relative_to_assets('notification.mp3'))
+                pygame.mixer.music.play()
+            except:
+                print("audio error")
 
             messagebox_text = scanning_text + " finished" +"\n " + str(num_errors) + " products failed to scan, please to check"
             # Display a pop-up notification
