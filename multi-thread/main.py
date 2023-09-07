@@ -30,8 +30,8 @@ ASSETS_PATH = OUTPUT_PATH / Path("assets/")
 
 pygame.init()
 address_btn_xpath = '//*[@id="intent-banner-section"]/button/div/div[2]'
-address_add_btn_xpath = '//*[@id="intent-banner-section"]/section[1]/div/div/div/div[1]/div/div[1]/div/div/div[2]/button'
-address_select_btn_xpath = '//*[@id="intent-banner-section"]/section[1]/div/div/div/div[1]/div/div[1]/button'
+address_add_btn_xpath = '//*[@id="intent-banner-section"]/section[1]/div/div/div/div[1]/div/div[1]/div/div/div/div[2]/button'
+address_select_btn_xpath = '//*[@id="intent-banner-section"]/section[1]/div/div/div/div[1]/div/div[1]/div/button'
 address_edit_btn_xpath = '//*[@id="address-selection-form"]/ul/li/div/div/button'
 
 change_form_xpath = '//*[@id="add-edit-address-form2"]'
@@ -72,6 +72,7 @@ pixelRatio = 1
 
 num_errors = 0
 array_errors = []
+scanning_initial = True
 
 # Create a lock object
 lock = threading.Lock()
@@ -293,7 +294,7 @@ def solve_blocked(driver, retry, link, index, wait, thread_id):
     print(f'solve blocked:{driver.current_url}, Retry {retry} remaining times')
     template = cv2.imread(os.path.join('./captcha.png'), 0)
     # Set the minimum number of feature points to match value 10
-    MIN_MATCH_COUNT = 8 
+    MIN_MATCH_COUNT = 10
     if  element:
         print(f'start press and hold')
         x, y = element.location['x'], element.location['y']
@@ -402,7 +403,7 @@ def check_product(link, index, driver, thread_id, sub_index):
             address_btn = WebDriverWait(driver, 150).until(EC.element_to_be_clickable((By.XPATH, address_btn_xpath)))
             address_btn.click()
             try:
-                address_add_btn = WebDriverWait(driver, 2).until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
+                address_add_btn = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, address_add_btn_xpath)))
                 address_add_btn.click()
                 add_address(address2_value, city2_value, state2_value, telephone2_value, zipCode2_value, driver, wait)
             except:
@@ -518,17 +519,16 @@ def check_product(link, index, driver, thread_id, sub_index):
         return "An error occurred:"+ str(e)
 
 def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_sheet):
-    print("running start thread" + str(thread_id))
     global num_errors
     global array_errors
-
+    global scanning_initial
+    
     row_index = start_row
     sub_index = 0
 
     for i, row in enumerate(sheet.iter_rows(min_row=row_index, max_row = end_row, values_only=True)):
         # Check if the stop event is set
         if stop_event.is_set():
-            print("Thread " + str(thread_id) + " stopped.")
             break
         
         start_row = row_index + i
@@ -550,35 +550,35 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
             productID4_entry.insert(0, start_row)
 
         value = check_product(row[0], i, driver, thread_id, sub_index)
-        print(value)
         while (value == "captcha false"):
             time.sleep(600)
-            options = ChromeOptions()
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--disable-infobars")
-            options.add_argument("--disable-notifications")
-            options.add_argument("--disable-web-security")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-software-rasterizer")
-            options.add_argument("--disable-features=VizDisplayCompositor")
-            options.add_argument("--blink-settings=imagesEnabled=false")
-            options.add_argument("--blink-settings=videoEnabled=false")
-            options.add_argument("--disable-css-rendering")
-            # or alternatively we can set direct preference:
-            prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
-            options.add_experimental_option('prefs', prefs)
-            
-            # driver = Chrome(options=options,
-            #             executable_path=ChromeDriverManager().install())
-            # Get the path where ChromeDriver was downloaded or will be downloaded
-        
-            driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
+            try:
+                options = ChromeOptions()
+                options.add_argument("--disable-extensions")
+                options.add_argument("--disable-gpu")
+                options.add_argument("--disable-infobars")
+                options.add_argument("--disable-notifications")
+                options.add_argument("--disable-web-security")
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-software-rasterizer")
+                options.add_argument("--disable-features=VizDisplayCompositor")
+                options.add_argument("--blink-settings=imagesEnabled=false")
+                options.add_argument("--blink-settings=videoEnabled=false")
+                options.add_argument("--disable-css-rendering")
+                # or alternatively we can set direct preference:
+                prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
+                options.add_experimental_option('prefs', prefs)
+                
+                driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
 
-            driver.set_page_load_timeout(30)
-            sub_index = i
-            value = check_product(row[0], i, driver, thread_id, sub_index)
+                driver.set_page_load_timeout(30)
+                sub_index = i
+                value = check_product(row[0], i, driver, thread_id, sub_index)
+            except:
+                driver = None
+                time.sleep(300)
+                continue
 
         if value == "stopped":
             break
@@ -591,7 +591,7 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
         try:
             b_value = row[1]
 
-            if(b_value == None):
+            if(scanning_initial == True):
                 sheet.cell(row=row_index + i, column=2).value = value
             else:
                 sheet.cell(row=row_index + i, column=3).value = value
@@ -611,6 +611,7 @@ def run_process(start_row, end_row, scan_index, sheet, thread_id, driver, error_
             sheet.cell(row=row_index + i, column=2).value = value
     
     driver.quit()
+    driver = None
     
 def update_timer():
     global remaining_time
@@ -633,43 +634,14 @@ def update_timer():
             canvas.itemconfigure(remainingtime_text, text="Time is Up!")
 
 def scan_errors(sheet):
+    print("scan error start")
     global num_errors
     global array_errors
+    global scanning_initial
 
     errors = []
-    options = ChromeOptions()
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-infobars")
-    options.add_argument("--disable-notifications")
-    options.add_argument("--disable-web-security")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--disable-features=VizDisplayCompositor")
-    options.add_argument("--blink-settings=imagesEnabled=false")
-    options.add_argument("--blink-settings=videoEnabled=false")
-    options.add_argument("--disable-css-rendering")
-    # or alternatively we can set direct preference:
-    prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
-    options.add_experimental_option('prefs', prefs)
-    
-    # driver = Chrome(options=options,
-    #             executable_path=ChromeDriverManager().install())
-    # driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
-    driver.set_page_load_timeout(30)
-
-    sub_index = 0
-    index = 0
-    num_errors = 0
-
-    for error_index in array_errors:
-        print(error_index)
-        link = sheet.cell(row = error_index, column = 1).value
-        value = check_product(link, index, driver, 0, sub_index)
-        while (value == "captcha false"):
-            time.sleep(600)
+    while(1):
+        try:
             options = ChromeOptions()
             options.add_argument("--disable-extensions")
             options.add_argument("--disable-gpu")
@@ -687,15 +659,50 @@ def scan_errors(sheet):
             prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
             options.add_experimental_option('prefs', prefs)
             
-            # driver = Chrome(options=options,
-            #             executable_path=ChromeDriverManager().install())
-            # Get the path where ChromeDriver was downloaded or will be downloaded
-        
             driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
-
             driver.set_page_load_timeout(30)
-            sub_index = index
-            value = check_product(link, index, driver, 0, sub_index)
+            break
+        except:
+            driver = None
+            time.sleep(300)
+            continue
+
+    sub_index = 0
+    index = 0
+    num_errors = 0
+
+    for error_index in array_errors:
+        link = sheet.cell(row = error_index, column = 1).value
+        value = check_product(link, index, driver, 0, sub_index)
+        while (value == "captcha false"):
+            time.sleep(600)
+            try:
+                options = ChromeOptions()
+                options.add_argument("--disable-extensions")
+                options.add_argument("--disable-gpu")
+                options.add_argument("--disable-infobars")
+                options.add_argument("--disable-notifications")
+                options.add_argument("--disable-web-security")
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-software-rasterizer")
+                options.add_argument("--disable-features=VizDisplayCompositor")
+                options.add_argument("--blink-settings=imagesEnabled=false")
+                options.add_argument("--blink-settings=videoEnabled=false")
+                options.add_argument("--disable-css-rendering")
+                # or alternatively we can set direct preference:
+                prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
+                options.add_experimental_option('prefs', prefs)
+                
+                driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
+
+                driver.set_page_load_timeout(30)
+                sub_index = index
+                value = check_product(link, index, driver, 0, sub_index)
+            except:
+                driver = None
+                time.sleep(300)
+                continue
 
         if value == "stopped":
             break
@@ -708,7 +715,7 @@ def scan_errors(sheet):
         try:
             b_value = sheet.cell(row = error_index, column = 2).value
 
-            if(b_value == None):
+            if(scanning_initial == True):
                 sheet.cell(row=error_index, column=2).value = value
             else:
                 sheet.cell(row=error_index, column=3).value = value
@@ -730,12 +737,15 @@ def scan_errors(sheet):
         index = index +1
 
     driver.quit()
+    driver = None
     array_errors = errors
 
 def main_process(workbook, sheet, directory_path):
     global wait_time
     global remaining_time
     global num_errors
+    global array_errors
+    global scanning_initial
 
     num_errors = 0
     row_count = sheet.max_row
@@ -766,6 +776,11 @@ def main_process(workbook, sheet, directory_path):
         count = row_count // threads_cnt
         end_row = 1
 
+        if (sheet.cell(row=2, column=2).value != None):
+            scanning_initial = False
+        else:
+            scanning_initial = True
+
         for i in range(threads_cnt):
             start_row = end_row
             if(i == threads_cnt - 1):
@@ -773,28 +788,53 @@ def main_process(workbook, sheet, directory_path):
             else:
                 end_row = start_row + count
 
-            options = ChromeOptions()
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--disable-infobars")
-            options.add_argument("--disable-notifications")
-            options.add_argument("--disable-web-security")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-software-rasterizer")
-            options.add_argument("--disable-features=VizDisplayCompositor")
-            options.add_argument("--blink-settings=imagesEnabled=false")
-            options.add_argument("--blink-settings=videoEnabled=false")
-            options.add_argument("--disable-css-rendering")
-            # or alternatively we can set direct preference:
-            prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
-            options.add_experimental_option('prefs', prefs)
+            driver = None
+            while(1):
+                try:
+                    options = ChromeOptions()
+                    options.add_argument("--disable-extensions")
+                    options.add_argument("--disable-gpu")
+                    options.add_argument("--disable-infobars")
+                    options.add_argument("--disable-notifications")
+                    options.add_argument("--disable-web-security")
+                    options.add_argument("--no-sandbox")
+                    options.add_argument("--disable-dev-shm-usage")
+                    options.add_argument("--disable-software-rasterizer")
+                    options.add_argument("--disable-features=VizDisplayCompositor")
+                    options.add_argument("--blink-settings=imagesEnabled=false")
+                    options.add_argument("--blink-settings=videoEnabled=false")
+                    options.add_argument("--disable-css-rendering")
+                    # or alternatively we can set direct preference:
+                    prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
+                    options.add_experimental_option('prefs', prefs)
+                    
+                    driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
+                    driver.set_page_load_timeout(30)
+                    break
+                except:
+                    driver = None
+                    time.sleep(300)
+                    continue
             
-            # driver = Chrome(options=options,
-            #             executable_path=ChromeDriverManager().install())
-            # driver = Chrome(service=Service(ChromeDriverManager().install()), options=options)
-            driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
-            driver.set_page_load_timeout(30)
+            # options = ChromeOptions()
+            # options.add_argument("--disable-extensions")
+            # options.add_argument("--disable-gpu")
+            # options.add_argument("--disable-infobars")
+            # options.add_argument("--disable-notifications")
+            # options.add_argument("--disable-web-security")
+            # options.add_argument("--no-sandbox")
+            # options.add_argument("--disable-dev-shm-usage")
+            # options.add_argument("--disable-software-rasterizer")
+            # options.add_argument("--disable-features=VizDisplayCompositor")
+            # options.add_argument("--blink-settings=imagesEnabled=false")
+            # options.add_argument("--blink-settings=videoEnabled=false")
+            # options.add_argument("--disable-css-rendering")
+            # # or alternatively we can set direct preference:
+            # prefs = {'profile.default_content_setting_values': {'images': 2, 'css': 2}}
+            # options.add_experimental_option('prefs', prefs)
+            
+            # driver = Chrome(executable_path=ChromeDriverManager().install(), options=options)
+            # driver.set_page_load_timeout(30)
             t = threading.Thread(target=run_process, args=(start_row+1, end_row, scan_index, sheet, i, driver, error_sheet))
             threads.append(t)
             t.start()
@@ -803,6 +843,7 @@ def main_process(workbook, sheet, directory_path):
         for t in threads:
             t.join()
 
+        threads = None
         running_cnt = 5
 
         if(stop_event.is_set()):
@@ -822,10 +863,12 @@ def main_process(workbook, sheet, directory_path):
             canvas.itemconfigure(errorproducts_text, text= str(num_errors) + " errors")
             
             while num_errors > 0 and running_cnt >= 0:
+                time.sleep(300)
                 scan_errors(sheet)
                 running_cnt = running_cnt -1
                 workbook.save(save_filename)
-                
+                canvas.itemconfigure(errorproducts_text, text= str(num_errors) + " errors")
+
             try:
                 # Display a pop-up notification and play audio
                 pygame.mixer.init()
@@ -858,6 +901,8 @@ def main_process(workbook, sheet, directory_path):
             canvas.itemconfigure(errorproducts_text, text= str(num_errors) + " errors")
             
             while num_errors > 0 and running_cnt >= 0:
+                print(array_errors)
+                time.sleep(300)
                 scan_errors(sheet)
                 running_cnt = running_cnt -1
                 workbook.save(save_filename)
